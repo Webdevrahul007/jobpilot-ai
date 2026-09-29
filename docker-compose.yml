@@ -1,0 +1,58 @@
+##
+## docker-compose.yml — LOCAL DEVELOPMENT ONLY
+##
+## Only runs the backing services (PostgreSQL + Redis).
+## The API and web app run on the host via `npm run dev:api` / `npm run dev:web`
+## so you get fast hot-reload without Docker overhead.
+##
+## Usage:
+##   npm run docker:up     → start PostgreSQL + Redis in background
+##   npm run docker:down   → stop and remove containers
+##   npm run docker:logs   → tail all service logs
+##
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: jobpilot_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jobpilot
+      POSTGRES_PASSWORD: jobpilot_dev_password
+      POSTGRES_DB: jobpilot_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Init script — runs once when the volume is first created
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobpilot -d jobpilot_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: jobpilot_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass jobpilot_redis_password
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "jobpilot_redis_password", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  postgres_data:
+    name: jobpilot_postgres_data
+  redis_data:
+    name: jobpilot_redis_data

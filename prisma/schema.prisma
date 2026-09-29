@@ -1,0 +1,263 @@
+// JobPilot AI — Prisma Schema
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ApplicationStatus {
+  PENDING    // Collected but not yet applied
+  IN_PROGRESS // Currently being processed by the bot
+  APPLIED    // Successfully submitted
+  SKIPPED    // Deliberately skipped (not Easy Apply, already applied, etc.)
+  FAILED     // Attempted but failed (form error, bot blocked, etc.)
+}
+
+enum JobSource {
+  LINKEDIN
+  WELLFOUND
+  INDEED
+  NAUKRI
+  COMPANY_PAGE
+}
+
+enum QueueJobStatus {
+  WAITING
+  ACTIVE
+  COMPLETED
+  FAILED
+  DELAYED
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USER
+// A single user owns all sessions/jobs/applications.
+// Built for multi-user SaaS from day one — no hardcoded single-user assumptions.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // bcrypt hash
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile      UserProfile?
+  sessions     LinkedInSession[]
+  jobSearches  JobSearch[]
+  applications Application[]
+  queueJobs    QueueJob[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USER PROFILE
+// Stores the personal details the bot uses to fill application forms.
+// Kept separate from User so it can be updated without touching auth fields.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model UserProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Personal
+  firstName    String
+  lastName     String
+  phone        String
+  city         String
+  country      String
+  linkedinUrl  String?
+
+  // Professional
+  totalYearsExp   Int
+  currentJobTitle String?
+  noticePeriodDays Int     @default(0)
+  expectedSalary  Int?     // Monthly, in INR
+  currency        String   @default("INR")
+  visaRequired    Boolean  @default(false)
+
+  // Resume — always the same file, path stored here
+  resumeFileName  String   @default("Rahul_Jangid_Resume.pdf")
+  resumeFilePath  String?  // Absolute path on the server
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("user_profiles")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LINKEDIN SESSION
+// Stores Playwright browser state (cookies + localStorage) so we don't
+// have to log in on every run. Encrypted at rest in production (Phase 10).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model LinkedInSession {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Playwright storageState JSON — cookies, localStorage, sessionStorage
+  sessionData Json
+  isActive    Boolean   @default(true)
+  lastUsedAt  DateTime  @default(now())
+  expiresAt   DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("linkedin_sessions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JOB SEARCH
+// A named search configuration (keywords + filters) that the bot runs.
+// One user can have multiple searches running in parallel.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model JobSearch {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String    // e.g. "Senior React Developer - Remote"
+  keywords    String    // Comma-separated or single keyword
+  location    String?
+  remote      Boolean   @default(false)
+  source      JobSource @default(LINKEDIN)
+  isActive    Boolean   @default(true)
+  lastRunAt   DateTime?
+
+  jobs        Job[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("job_searches")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JOB
+// A single job listing collected by the scraper.
+// Separate from Application so we can collect many jobs, then apply selectively.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Job {
+  id            String    @id @default(cuid())
+  jobSearchId   String
+  jobSearch     JobSearch @relation(fields: [jobSearchId], references: [id], onDelete: Cascade)
+
+  // Raw data from the listing
+  title         String
+  company       String
+  location      String?
+  jobUrl        String    @unique  // LinkedIn job URL — dedup key
+  source        JobSource @default(LINKEDIN)
+  isEasyApply   Boolean   @default(false)
+  isRemote      Boolean   @default(false)
+  salary        String?   // Raw string as shown on listing
+  postedAt      DateTime?
+  description   String?   @db.Text
+
+  application   Application?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Fast lookups by search + easy apply status
+  @@index([jobSearchId, isEasyApply])
+  @@index([source, isEasyApply])
+  @@map("jobs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// APPLICATION
+// Tracks the actual application attempt for a job.
+// One application per job (enforced by @unique on jobId).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Application {
+  id            String            @id @default(cuid())
+  jobId         String            @unique
+  job           Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status        ApplicationStatus @default(PENDING)
+  appliedAt     DateTime?
+  failureReason String?           // Human-readable reason for FAILED/SKIPPED
+  retryCount    Int               @default(0)
+  screenshotUrl String?           // Debug screenshot on failure
+
+  // Form fields that were filled (snapshot for audit)
+  formAnswers   FormAnswer[]
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+  @@map("applications")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FORM ANSWER
+// Stores every question→answer pair from an Easy Apply form.
+// Built a dedicated table (not a JSON blob) so we can:
+// - Query "what did we answer for 'expected salary' across all applications?"
+// - Reuse answers for future applications with the same question
+// ─────────────────────────────────────────────────────────────────────────────
+
+model FormAnswer {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  questionText  String      // Raw question label from the form
+  questionKey   String?     // Normalised key (e.g. "expected_salary")
+  answer        String
+  inputType     String?     // "text" | "select" | "radio" | "checkbox"
+
+  createdAt     DateTime    @default(now())
+
+  @@index([applicationId])
+  @@map("form_answers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QUEUE JOB
+// BullMQ queue state persisted in Postgres (Phase 9 will use Redis for the
+// live queue, this is a mirror for dashboard display and audit logs).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model QueueJob {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  jobType     String         // "APPLY" | "SCRAPE" | "SESSION_REFRESH"
+  payload     Json
+  status      QueueJobStatus @default(WAITING)
+  attempts    Int            @default(0)
+  maxAttempts Int            @default(3)
+  error       String?
+  processedAt DateTime?
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([userId, status])
+  @@map("queue_jobs")
+}

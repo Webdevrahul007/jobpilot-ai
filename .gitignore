@@ -1,0 +1,87 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# JobPilot AI — .gitignore
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Secrets & Environment ──────────────────────────────────────────────────────
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+# Keep .env.example — it documents what's needed
+!.env.example
+
+# ── Dependencies ───────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Build Outputs ──────────────────────────────────────────────────────────────
+dist/
+build/
+out/
+
+# ── Next.js ────────────────────────────────────────────────────────────────────
+apps/web/.next/
+apps/web/out/
+apps/web/next-env.d.ts
+
+# ── TypeScript ─────────────────────────────────────────────────────────────────
+*.tsbuildinfo
+
+# ── Prisma ─────────────────────────────────────────────────────────────────────
+# Generated client — always re-generated from schema, never committed
+prisma/generated/
+# Never commit migration lock if you want fresh migrations on new machines
+# (comment this line out if you want to pin migration state)
+# prisma/migrations/
+
+# ── Playwright ─────────────────────────────────────────────────────────────────
+# Browser session storage — contains cookies and auth tokens
+.sessions/
+playwright-report/
+test-results/
+# Playwright browser binaries (large, downloaded on demand)
+/ms-playwright/
+
+# ── Logs ───────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ── OS & Editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ── Testing ────────────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ── Uploads & Assets ──────────────────────────────────────────────────────────
+# Resume files — sensitive personal document
+resumes/
+# Screenshots captured by Playwright on failure
+screenshots/
+
+# ── Docker ─────────────────────────────────────────────────────────────────────
+# Docker volumes are managed externally, not in repo
+.docker-data/
+
+# ── Misc ───────────────────────────────────────────────────────────────────────
+.cache/
+.turbo/
+tmp/
+temp/
