@@ -134,7 +134,7 @@ export const LinkedInSelectors = {
     DETAIL_SALARY: '.job-details-jobs-unified-top-card__job-insight span',
   },
 
-  // ── Easy Apply (Phase 4+) ──────────────────────────────────────────────────
+  // ── Easy Apply Modal ──────────────────────────────────────────────────────
 
   EASY_APPLY: {
     // "Easy Apply" button on a job listing page
@@ -143,20 +143,79 @@ export const LinkedInSelectors = {
     // Modal dialog that opens after clicking Easy Apply
     MODAL: '.jobs-easy-apply-content',
 
-    // "Next" button inside the modal
+    // Modal header — shows current step title e.g. "Contact info", "Resume"
+    MODAL_HEADER: 'h3.jobs-easy-apply-header',
+
+    // "Next" button inside the modal — advances to next step
     NEXT_BUTTON: 'button[aria-label="Continue to next step"]',
 
-    // "Review" button (second-to-last step)
+    // "Review" button — second-to-last step
     REVIEW_BUTTON: 'button[aria-label="Review your application"]',
 
-    // "Submit application" final button
+    // "Submit application" — final button
     SUBMIT_BUTTON: 'button[aria-label="Submit application"]',
 
     // Error summary shown when required fields are missing
     ERROR_SUMMARY: '.artdeco-inline-feedback--error',
 
-    // Close/discard modal button
+    // "Dismiss" / close modal button
     CLOSE_BUTTON: 'button[aria-label="Dismiss"]',
+
+    // Discard confirmation dialog that appears after clicking Dismiss
+    DISCARD_CONFIRM_BUTTON: 'button[data-control-name="discard_application_confirm_btn"]',
+  },
+
+  // ── Resume Upload (inside Easy Apply modal) ───────────────────────────────
+
+  RESUME: {
+    // ── Upload scenarios ─────────────────────────────────────────────────
+
+    // The file <input> that accepts the PDF — hidden, triggered by clicking label
+    // LinkedIn uses multiple possible IDs/classes across UI versions
+    FILE_INPUT: [
+      'input[type="file"][name="file"]',
+      'input[type="file"].jobs-document-upload__input',
+      'input[type="file"][id*="resume"]',
+      'input[type="file"][accept*="pdf"]',
+    ].join(", "),
+
+    // The upload button/label the user clicks — we use setInputFiles() directly
+    // on the hidden input instead, but this locator confirms upload UI is present
+    UPLOAD_LABEL: '.jobs-document-upload__upload-button, label[for*="resume"]',
+
+    // Container that wraps the whole resume upload section
+    UPLOAD_CONTAINER: '.jobs-document-upload, .resume-upload',
+
+    // ── Existing resume scenarios ────────────────────────────────────────
+
+    // Radio button: "Use previously uploaded resume" option
+    USE_EXISTING_RADIO: 'input[name*="resume"][value*="existing"], label:has-text("Use")',
+
+    // "Previously uploaded" card that shows the last uploaded resume
+    EXISTING_RESUME_CARD: '.jobs-resume-upload-redesign__resume-card, .jobs-document-upload__resume-card',
+
+    // The resume filename shown in the existing card
+    EXISTING_RESUME_NAME: '.jobs-resume-upload-redesign__resume-name, .document-upload__file-name',
+
+    // "Upload a different resume" / "Replace" link
+    REPLACE_RESUME_LINK: 'button:has-text("Upload a different resume"), button:has-text("Replace"), a:has-text("Upload a different resume")',
+
+    // ── Step identification ───────────────────────────────────────────────
+
+    // Heading text that indicates we're on the resume step
+    // LinkedIn calls it "Resume" or "Contact info" (which also has resume)
+    RESUME_STEP_HEADING: 'h3:has-text("Resume"), h3:has-text("Contact info"), .jobs-easy-apply-header:has-text("Resume")',
+
+    // ── Upload success / progress ─────────────────────────────────────────
+
+    // Progress bar shown while file is uploading
+    UPLOAD_PROGRESS: '.jobs-document-upload__upload-progress',
+
+    // Success indicator after upload completes
+    UPLOAD_SUCCESS: '.jobs-document-upload__upload-icon--done, .artdeco-inline-feedback--success',
+
+    // Error shown if file type/size rejected
+    UPLOAD_ERROR: '.jobs-document-upload__upload-error, .artdeco-inline-feedback--error',
   },
 } as const;
 

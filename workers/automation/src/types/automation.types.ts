@@ -100,3 +100,29 @@ export interface BatchDetectionResult {
   errors: number;
   results: DetectionResult[];
 }
+
+// ── Resume Upload ──────────────────────────────────────────────────────────
+
+/**
+ * Which resume scenario was encountered inside the Easy Apply modal.
+ *
+ * UPLOAD_FIELD    → fresh file input present, we uploaded the PDF
+ * EXISTING_RESUME → prior resume card shown, we kept or replaced it
+ * NO_RESUME_FIELD → step had no resume section (contact info only, etc.)
+ * NO_BUTTON       → Easy Apply button wasn't on the page
+ * ERROR           → unexpected error during the process
+ */
+export type ResumeScenario =
+  | "UPLOAD_FIELD"
+  | "EXISTING_RESUME"
+  | "NO_RESUME_FIELD"
+  | "NO_BUTTON"
+  | "ERROR";
+
+export interface ResumeUploadResult {
+  success: boolean;
+  jobId: string;
+  resumeFileName: string;
+  scenario: ResumeScenario;
+  error?: string;
+}
