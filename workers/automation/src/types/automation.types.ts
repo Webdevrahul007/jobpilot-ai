@@ -51,27 +51,52 @@ export interface JobSearchParams {
   location?: string;
   easyApplyOnly?: boolean;
   remoteOnly?: boolean;
-  maxPages?: number; // default 5 (= 125 jobs max)
+  maxPages?: number;
 }
 
-/**
- * A single job card extracted from LinkedIn search results.
- * This is the raw scraped data — not the DB model.
- */
 export interface ScrapedJob {
   title: string;
   company: string;
   location: string;
-  jobUrl: string;         // canonical URL, tracking params stripped
+  jobUrl: string;
   isEasyApply: boolean;
   isRemote: boolean;
   salary: string | null;
-  postedAt: string | null; // raw string e.g. "2 days ago" — parsed later
+  postedAt: string | null;
 }
 
 export interface JobSearchResult {
   jobs: ScrapedJob[];
-  totalFound: number;     // count from LinkedIn's "X results" header
+  totalFound: number;
   pagesScraped: number;
-  errors: string[];       // non-fatal per-card errors logged here
+  errors: string[];
+}
+
+// ── Easy Apply Detection ───────────────────────────────────────────────────
+
+/**
+ * Verdict returned for a single job page inspection.
+ */
+export type DetectionVerdict =
+  | "EASY_APPLY"       // "Easy Apply" button confirmed on detail page
+  | "EXTERNAL_APPLY"   // "Apply" button → redirects off LinkedIn
+  | "ALREADY_APPLIED"  // "Applied" badge shown — user already applied
+  | "CLOSED"           // Job no longer accepting applications
+  | "NO_BUTTON"        // No apply button found at all
+  | "SESSION_EXPIRED"  // Redirected to login mid-run
+  | "ERROR";           // Unexpected error inspecting this job
+
+export interface DetectionResult {
+  jobId: string;
+  jobUrl: string;
+  verdict: DetectionVerdict;
+  error?: string;
+}
+
+export interface BatchDetectionResult {
+  processed: number;
+  easyApply: number;
+  skipped: number;
+  errors: number;
+  results: DetectionResult[];
 }
