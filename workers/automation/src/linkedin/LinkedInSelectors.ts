@@ -71,6 +71,69 @@ export const LinkedInSelectors = {
     PIN_INPUT: 'input#input__email_verification_pin',
   },
 
+  // ── Job Search Results ────────────────────────────────────────────────────
+
+  JOBS: {
+    // The scrollable list panel on the left side of /jobs/search/
+    RESULTS_LIST: '.jobs-search-results-list, .scaffold-layout__list',
+
+    // Each individual job card in the results list
+    JOB_CARD: 'li.jobs-search-results__list-item, li.scaffold-layout__list-item',
+
+    // Job title link inside a card
+    CARD_TITLE: 'a.job-card-list__title, a.job-card-container__link',
+
+    // Company name inside a card
+    CARD_COMPANY: '.job-card-container__primary-description, .artdeco-entity-lockup__subtitle',
+
+    // Location inside a card
+    CARD_LOCATION: '.job-card-container__metadata-item, .artdeco-entity-lockup__caption',
+
+    // "Easy Apply" badge on a card — presence = Easy Apply job
+    CARD_EASY_APPLY_BADGE: '.job-card-container__apply-method, li-icon[type="linkedin-bug"]',
+
+    // Salary shown on card (not always present)
+    CARD_SALARY: '.job-card-container__salary-info',
+
+    // "Remote" / "Hybrid" tag on card
+    CARD_WORKPLACE_TYPE: '.job-card-container__metadata-wrapper .job-card-container__metadata-item--workplace-type',
+
+    // Pagination: "Next" button at bottom of results
+    PAGINATION_NEXT: 'button[aria-label="View next page"]',
+
+    // Total result count shown above the list ("1,234 results")
+    RESULT_COUNT: '.jobs-search-results-list__title-heading, h1.jobs-search-results-list__title',
+
+    // Loading spinner — wait for this to disappear before scraping
+    LOADING_SPINNER: '.jobs-search-results-list__loader',
+
+    // No results message
+    NO_RESULTS: '.jobs-search-no-results-banner',
+
+    // ── Job Detail Panel (right side) ───────────────────────────────────────
+
+    // Title in the detail panel
+    DETAIL_TITLE: '.job-details-jobs-unified-top-card__job-title h1, h1.t-24',
+
+    // Company name in detail panel
+    DETAIL_COMPANY: '.job-details-jobs-unified-top-card__company-name a, .job-details-jobs-unified-top-card__company-name',
+
+    // Location in detail panel
+    DETAIL_LOCATION: '.job-details-jobs-unified-top-card__primary-description-container .tvm__text',
+
+    // Posted date in detail panel
+    DETAIL_POSTED: '.job-details-jobs-unified-top-card__primary-description-container span[aria-hidden="true"]',
+
+    // "Easy Apply" button in detail panel
+    DETAIL_EASY_APPLY_BUTTON: 'button.jobs-apply-button',
+
+    // "Apply" button (external — not Easy Apply)
+    DETAIL_EXTERNAL_APPLY_BUTTON: 'button.jobs-apply-button--top-card',
+
+    // Salary shown in detail panel
+    DETAIL_SALARY: '.job-details-jobs-unified-top-card__job-insight span',
+  },
+
   // ── Easy Apply (Phase 4+) ──────────────────────────────────────────────────
 
   EASY_APPLY: {
@@ -105,3 +168,30 @@ export const LinkedInUrls = {
   JOBS_SEARCH: "https://www.linkedin.com/jobs/search/",
   CHECKPOINT: "https://www.linkedin.com/checkpoint",
 } as const;
+
+/**
+ * Build a LinkedIn jobs search URL with query params.
+ *
+ * f_AL=true  → Easy Apply filter
+ * f_WT=2     → Remote jobs (1=On-site, 2=Remote, 3=Hybrid)
+ * sortBy=DD  → Sort by "Most Recent" (DD = date descending)
+ * start=N    → Pagination offset (25 per page)
+ */
+export function buildJobSearchUrl(params: {
+  keywords: string;
+  location?: string;
+  easyApplyOnly?: boolean;
+  remoteOnly?: boolean;
+  start?: number;
+}): string {
+  const url = new URL(LinkedInUrls.JOBS_SEARCH);
+  url.searchParams.set("keywords", params.keywords);
+  if (params.location) url.searchParams.set("location", params.location);
+  if (params.easyApplyOnly) url.searchParams.set("f_AL", "true");
+  if (params.remoteOnly) url.searchParams.set("f_WT", "2");
+  url.searchParams.set("sortBy", "DD"); // Most recent first
+  if (params.start && params.start > 0) {
+    url.searchParams.set("start", String(params.start));
+  }
+  return url.toString();
+}

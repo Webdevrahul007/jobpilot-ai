@@ -7,7 +7,8 @@
 
 export { BrowserManager } from "./browser/BrowserManager.js";
 export { LinkedInAuth } from "./linkedin/LinkedInAuth.js";
-export { LinkedInSelectors, LinkedInUrls } from "./linkedin/LinkedInSelectors.js";
+export { LinkedInJobSearch } from "./linkedin/LinkedInJobSearch.js";
+export { LinkedInSelectors, LinkedInUrls, buildJobSearchUrl } from "./linkedin/LinkedInSelectors.js";
 export { SessionManager } from "./session/SessionManager.js";
 
 export type {
@@ -17,4 +18,7 @@ export type {
   LoginResult,
   SessionCheckResult,
   StorageState,
+  JobSearchParams,
+  JobSearchResult,
+  ScrapedJob,
 } from "./types/automation.types.js";
