@@ -26,6 +26,13 @@ const envSchema = z.object({
 
   // CORS
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
+
+  // Playwright
+  PLAYWRIGHT_HEADLESS: z.string().default("false"),
+  PLAYWRIGHT_SESSION_DIR: z.string().default(".sessions"),
+
+  // Resume
+  RESUME_FILE_PATH: z.string().default("./resumes/Rahul_Jangid_Resume.pdf"),
 });
 
 const parsed = envSchema.safeParse(process.env);

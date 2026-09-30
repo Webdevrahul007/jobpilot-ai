@@ -4,12 +4,18 @@
     "module": "CommonJS",
     "moduleResolution": "Node",
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": "../..",
+    "composite": false,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@jobpilot/automation": ["../../workers/automation/src/index.ts"],
+      "@jobpilot/automation/*": ["../../workers/automation/src/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*",
+    "../../workers/automation/src/**/*"
+  ],
   "exclude": ["node_modules", "dist"]
 }
