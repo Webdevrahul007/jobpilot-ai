@@ -4,6 +4,7 @@ import sessionRoutes from "./session.routes.js";
 import jobRoutes from "./job.routes.js";
 import detectionRoutes from "./detection.routes.js";
 import resumeRoutes from "./resume.routes.js";
+import formFillRoutes from "./formFill.routes.js";
 
 const router = Router();
 
@@ -12,9 +13,9 @@ router.use("/linkedin", sessionRoutes);
 router.use("/jobs", jobRoutes);
 router.use("/detect", detectionRoutes);
 router.use("/resume", resumeRoutes);
+router.use("/form", formFillRoutes);
 
 // Future:
 // router.use("/auth", authRoutes);
-// router.use("/applications", applicationRoutes);
 
 export default router;

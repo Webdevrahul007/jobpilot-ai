@@ -126,3 +126,24 @@ export interface ResumeUploadResult {
   scenario: ResumeScenario;
   error?: string;
 }
+
+// ── Form Filling ───────────────────────────────────────────────────────────
+
+/**
+ * A single field that was filled during an Easy Apply form run.
+ * Stored in the FormAnswer table for future reuse and audit.
+ */
+export interface FilledField {
+  label: string;
+  normalizedKey: string;
+  type: string;
+  answer: string;
+}
+
+export interface FormFillResult {
+  success: boolean;      // true = reached Review step
+  jobId: string;
+  stepsCompleted: number;
+  filledFields: FilledField[];
+  errors: string[];
+}

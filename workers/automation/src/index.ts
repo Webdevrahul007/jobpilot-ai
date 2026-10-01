@@ -8,10 +8,13 @@
 export { BrowserManager } from "./browser/BrowserManager.js";
 export { LinkedInAuth } from "./linkedin/LinkedInAuth.js";
 export { LinkedInEasyApplyDetector, detectBatch } from "./linkedin/LinkedInEasyApplyDetector.js";
+export { LinkedInFormFiller } from "./linkedin/LinkedInFormFiller.js";
 export { LinkedInJobSearch } from "./linkedin/LinkedInJobSearch.js";
 export { LinkedInResumeUploader } from "./linkedin/LinkedInResumeUploader.js";
 export { LinkedInSelectors, LinkedInUrls, buildJobSearchUrl } from "./linkedin/LinkedInSelectors.js";
 export { SessionManager } from "./session/SessionManager.js";
+export { FieldDetector } from "./linkedin/FieldDetector.js";
+export { AnswerResolver } from "./linkedin/AnswerResolver.js";
 
 export type {
   BrowserConfig,
@@ -28,4 +31,9 @@ export type {
   BatchDetectionResult,
   ResumeScenario,
   ResumeUploadResult,
+  FilledField,
+  FormFillResult,
 } from "./types/automation.types.js";
+
+export type { UserProfileData, StoredAnswers } from "./linkedin/AnswerResolver.js";
+export type { DetectedField, FieldType } from "./linkedin/FieldDetector.js";
