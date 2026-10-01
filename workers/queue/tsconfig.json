@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "dist",
+    "rootDir": "../..",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@jobpilot/automation": ["../automation/src/index.ts"],
+      "@jobpilot/automation/*": ["../automation/src/*"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "../automation/src/**/*"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

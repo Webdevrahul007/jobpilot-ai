@@ -10,12 +10,15 @@
     "paths": {
       "@/*": ["src/*"],
       "@jobpilot/automation": ["../../workers/automation/src/index.ts"],
-      "@jobpilot/automation/*": ["../../workers/automation/src/*"]
+      "@jobpilot/automation/*": ["../../workers/automation/src/*"],
+      "@jobpilot/queue": ["../../workers/queue/src/index.ts"],
+      "@jobpilot/queue/*": ["../../workers/queue/src/*"]
     }
   },
   "include": [
     "src/**/*",
-    "../../workers/automation/src/**/*"
+    "../../workers/automation/src/**/*",
+    "../../workers/queue/src/**/*"
   ],
   "exclude": ["node_modules", "dist"]
 }
