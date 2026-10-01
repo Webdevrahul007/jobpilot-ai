@@ -4,12 +4,11 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-COPY apps/api/package.json ./apps/api/
 COPY workers/automation/package.json ./workers/automation/
 COPY workers/queue/package.json ./workers/queue/
 COPY prisma ./prisma/
 
-RUN npm ci --workspace=apps/api --workspace=workers/automation --workspace=workers/queue --include-workspace-root
+RUN npm ci --workspace=workers/automation --workspace=workers/queue --include-workspace-root
 
 # ── Stage 2: Builder ──────────────────────────────────────────────────────────
 FROM node:22-alpine AS builder
@@ -17,44 +16,39 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=deps /app/workers/automation/node_modules ./workers/automation/node_modules
 COPY --from=deps /app/workers/queue/node_modules ./workers/queue/node_modules
 COPY . .
 
-# Generate Prisma client
 RUN npx prisma generate --schema=./prisma/schema.prisma
 
-# Compile TypeScript
-RUN npm run build:api
-
 # ── Stage 3: Runner ───────────────────────────────────────────────────────────
-FROM node:22-alpine AS runner
+# Use Playwright's official image which includes Chromium + all OS dependencies.
+# Much simpler than manually installing libglib2, libnss3, etc. on Alpine.
+FROM mcr.microsoft.com/playwright:v1.47.2-noble AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PLAYWRIGHT_HEADLESS=true
 
-# Non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 appuser
+# Non-root user
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 --gid nodejs appuser
 
-# Create required directories
+# Required runtime directories
 RUN mkdir -p /app/logs /app/resumes /app/.sessions /app/screenshots && \
     chown -R appuser:nodejs /app
 
-COPY --from=builder --chown=appuser:nodejs /app/apps/api/dist ./apps/api/dist
 COPY --from=builder --chown=appuser:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=appuser:nodejs /app/apps/api/node_modules ./apps/api/node_modules
-COPY --from=builder --chown=appuser:nodejs /app/workers/automation/node_modules ./workers/automation/node_modules
-COPY --from=builder --chown=appuser:nodejs /app/workers/queue/node_modules ./workers/queue/node_modules
+COPY --from=builder --chown=appuser:nodejs /app/workers/automation ./workers/automation
+COPY --from=builder --chown=appuser:nodejs /app/workers/queue ./workers/queue
 COPY --from=builder --chown=appuser:nodejs /app/prisma ./prisma
 
 USER appuser
 
-EXPOSE 4000
+# Healthcheck: verify worker process is alive
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD pgrep -f "worker.ts" || pgrep -f "tsx" || exit 1
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-  CMD wget -qO- http://localhost:4000/api/v1/health/live || exit 1
-
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=./prisma/schema.prisma && node apps/api/dist/server.js"]
+CMD ["node_modules/.bin/tsx", "workers/queue/src/worker.ts"]

@@ -33,6 +33,9 @@ const envSchema = z.object({
 
   // Resume
   RESUME_FILE_PATH: z.string().default("./resumes/Rahul_Jangid_Resume.pdf"),
+
+  // Logging — LOG_DIR is optional; if not set, no file logging (dev default)
+  LOG_DIR: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

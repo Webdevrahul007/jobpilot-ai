@@ -1,0 +1,13 @@
+# railway.toml — JobPilot AI deployment configuration
+# Docs: https://docs.railway.app/reference/config-as-code
+
+[build]
+builder = "DOCKERFILE"
+
+# ── Services are configured per-service in Railway dashboard ──────────────────
+# This file sets shared defaults. Each service (api, web, worker) overrides
+# the dockerfile path in the Railway dashboard or via service-specific config.
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
