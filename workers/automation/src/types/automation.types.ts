@@ -147,3 +147,43 @@ export interface FormFillResult {
   filledFields: FilledField[];
   errors: string[];
 }
+
+// ── Submit Application ─────────────────────────────────────────────────────
+
+/**
+ * Outcome of a single submit attempt.
+ *
+ * SUCCESS          → "Your application was sent" screen confirmed
+ * ALREADY_APPLIED  → LinkedIn stopped us — already applied
+ * SUBMIT_ERROR     → Submit button clicked but no success screen appeared
+ * MODAL_NOT_OPEN   → Could not reach the Review step to find Submit button
+ * SESSION_EXPIRED  → Redirected to login mid-run
+ * ERROR            → Unexpected exception
+ */
+export type SubmitOutcome =
+  | "SUCCESS"
+  | "ALREADY_APPLIED"
+  | "SUBMIT_ERROR"
+  | "MODAL_NOT_OPEN"
+  | "SESSION_EXPIRED"
+  | "ERROR";
+
+export interface SubmitResult {
+  success: boolean;
+  jobId: string;
+  outcome: SubmitOutcome;
+  screenshotPath?: string;
+  error?: string;
+}
+
+export interface ApplicationRunResult {
+  jobId: string;
+  applicationId: string;
+  success: boolean;
+  outcome: SubmitOutcome;
+  stepsCompleted: number;
+  fieldsFilled: number;
+  screenshotPath?: string;
+  error?: string;
+  retried: boolean;
+}

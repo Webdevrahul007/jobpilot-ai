@@ -165,6 +165,22 @@ export const LinkedInSelectors = {
     DISCARD_CONFIRM_BUTTON: 'button[data-control-name="discard_application_confirm_btn"]',
   },
 
+  // ── Post-submission success screen ────────────────────────────────────────
+
+  SUBMIT_SUCCESS: {
+    // Primary success heading — "Your application was sent to <Company>"
+    HEADING: 'h2:has-text("application was sent"), h2:has-text("Application submitted"), .post-apply-timeline__entity-lockup',
+
+    // Secondary confirmation inside the success panel
+    CONFIRMATION: '.post-apply-timeline, .jobs-applied-confirmation',
+
+    // "Done" button that closes the confirmation
+    DONE_BUTTON: 'button[aria-label="Dismiss"], button:has-text("Done")',
+
+    // "Save" prompt that sometimes follows submission ("Save this job for future reference")
+    SAVE_PROMPT: '.post-apply-save-card',
+  },
+
   // ── Resume Upload (inside Easy Apply modal) ───────────────────────────────
 
   RESUME: {

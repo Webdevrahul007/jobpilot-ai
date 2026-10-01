@@ -11,6 +11,7 @@ export { LinkedInEasyApplyDetector, detectBatch } from "./linkedin/LinkedInEasyA
 export { LinkedInFormFiller } from "./linkedin/LinkedInFormFiller.js";
 export { LinkedInJobSearch } from "./linkedin/LinkedInJobSearch.js";
 export { LinkedInResumeUploader } from "./linkedin/LinkedInResumeUploader.js";
+export { LinkedInSubmitter } from "./linkedin/LinkedInSubmitter.js";
 export { LinkedInSelectors, LinkedInUrls, buildJobSearchUrl } from "./linkedin/LinkedInSelectors.js";
 export { SessionManager } from "./session/SessionManager.js";
 export { FieldDetector } from "./linkedin/FieldDetector.js";
@@ -33,6 +34,9 @@ export type {
   ResumeUploadResult,
   FilledField,
   FormFillResult,
+  SubmitOutcome,
+  SubmitResult,
+  ApplicationRunResult,
 } from "./types/automation.types.js";
 
 export type { UserProfileData, StoredAnswers } from "./linkedin/AnswerResolver.js";

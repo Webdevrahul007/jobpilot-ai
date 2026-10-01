@@ -5,6 +5,7 @@ import jobRoutes from "./job.routes.js";
 import detectionRoutes from "./detection.routes.js";
 import resumeRoutes from "./resume.routes.js";
 import formFillRoutes from "./formFill.routes.js";
+import submitRoutes from "./submit.routes.js";
 
 const router = Router();
 
@@ -14,6 +15,7 @@ router.use("/jobs", jobRoutes);
 router.use("/detect", detectionRoutes);
 router.use("/resume", resumeRoutes);
 router.use("/form", formFillRoutes);
+router.use("/apply", submitRoutes);
 
 // Future:
 // router.use("/auth", authRoutes);
