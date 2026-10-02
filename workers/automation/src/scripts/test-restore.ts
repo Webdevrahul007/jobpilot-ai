@@ -25,14 +25,15 @@ import { BrowserManager } from "../browser/BrowserManager.js";
 import { LinkedInAuth } from "../linkedin/LinkedInAuth.js";
 import { SessionManager } from "../session/SessionManager.js";
 
-dotenv.config({ path: path.resolve(__dirname, "../../../../.env") });
+const repoRoot = path.resolve(__dirname, "../../../../");
+dotenv.config({ path: path.join(repoRoot, ".env") });
 
-const TEST_USER_ID = "test-user";
+const TEST_USER_ID = "cmumodzni0000100dbd8zgny2";
 
 async function main() {
-  const sessionDir = path.resolve(
-    process.env["PLAYWRIGHT_SESSION_DIR"] ?? ".sessions"
-  );
+  const sessionDir = process.env["PLAYWRIGHT_SESSION_DIR"]
+    ? path.resolve(process.env["PLAYWRIGHT_SESSION_DIR"])
+    : path.resolve(__dirname, "../../../../.sessions");
   const headless = process.env["PLAYWRIGHT_HEADLESS"] === "true";
 
   console.log("🔄 Testing session restore");

@@ -126,19 +126,41 @@ export class LinkedInJobSearch {
     // Navigate to the search results page
     await this.page.goto(url, {
       waitUntil: "domcontentloaded",
-      timeout: 20_000,
+      timeout: 60_000, // LinkedIn jobs pages can be slow — 60s
     });
 
-    // Wait for the results list to appear
-    try {
-      await this.page
-        .locator(LinkedInSelectors.JOBS.RESULTS_LIST)
-        .waitFor({ state: "visible", timeout: 10_000 });
-    } catch {
-      // Check if we've been redirected to login (session expired)
-      if (this.page.url().includes("/login")) {
-        throw new Error("SESSION_EXPIRED: Redirected to login page during search");
+    // Brief wait for JS to render
+    await this.page.waitForTimeout(2000);
+
+    // Check for session expiry immediately after navigation
+    const currentUrl = this.page.url();
+    if (currentUrl.includes("/login") || currentUrl.includes("/checkpoint")) {
+      throw new Error("SESSION_EXPIRED: Redirected to login page during search");
+    }
+
+    // Wait for the results list to appear — try multiple selectors
+    const resultsSelectors = [
+      LinkedInSelectors.JOBS.RESULTS_LIST,
+      ".jobs-search-results__list",
+      ".scaffold-layout__list",
+      "ul.jobs-search-results__list",
+      "[data-view-name='job-search-results-list']",
+    ];
+
+    let resultsFound = false;
+    for (const sel of resultsSelectors) {
+      const visible = await this.page
+        .locator(sel)
+        .first()
+        .isVisible({ timeout: 5_000 })
+        .catch(() => false);
+      if (visible) {
+        resultsFound = true;
+        break;
       }
+    }
+
+    if (!resultsFound) {
       // Check for no results banner
       const noResults = await this.page
         .locator(LinkedInSelectors.JOBS.NO_RESULTS)
@@ -147,7 +169,8 @@ export class LinkedInJobSearch {
       if (noResults) {
         return { jobs: [], totalCount: 0, errors: [] };
       }
-      throw new Error("Results list did not appear within timeout");
+      // Not a hard error — page may have loaded differently
+      logger.warn("Results list selector not found, attempting extraction anyway");
     }
 
     // Wait for loading spinner to disappear
@@ -249,7 +272,16 @@ export class LinkedInJobSearch {
     const titleVisible = await titleEl.isVisible().catch(() => false);
     if (!titleVisible) return null;
 
-    const title = await titleEl.textContent().then((t) => t?.trim() ?? "");
+    const title = await titleEl.textContent().then((t) => {
+      if (!t) return "";
+      const clean = t.trim();
+      // Remove duplicate title (LinkedIn sometimes renders title twice in DOM)
+      const half = Math.floor(clean.length / 2);
+      if (clean.length % 2 === 0 && clean.slice(0, half) === clean.slice(half)) {
+        return clean.slice(0, half);
+      }
+      return clean;
+    });
     if (!title) return null;
 
     const rawHref = await titleEl.getAttribute("href").catch(() => null);

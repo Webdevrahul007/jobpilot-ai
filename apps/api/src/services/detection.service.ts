@@ -107,7 +107,7 @@ export class DetectionService {
       });
 
       const detector = new LinkedInEasyApplyDetector(browserSession.page);
-      results = await detectBatch(undetectedJobs, detector, concurrency);
+      results = await detectBatch(undetectedJobs, detector, 1); // concurrency 1 — single page, sequential only
 
       await browserManager.closeSession(browserSession);
     } finally {

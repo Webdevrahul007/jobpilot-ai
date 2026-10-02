@@ -53,8 +53,20 @@ export class LinkedInAuth {
       // Submit
       await this.clickSignIn();
 
-      // Wait for navigation to settle
-      await this.page.waitForLoadState("networkidle", { timeout: 15_000 });
+      // Wait for URL to change away from /login
+      // Don't use networkidle — LinkedIn keeps background connections open
+      try {
+        await this.page.waitForURL(
+          (url) =>
+            !url.toString().includes("/login") &&
+            url.toString().includes("linkedin.com"),
+          { timeout: 20_000 }
+        );
+      } catch {
+        // URL didn't change — still check DOM state below
+        await randomDelay(3000, 5000);
+      }
+
       await longDelay();
 
       // Analyse what happened after submit
@@ -91,12 +103,45 @@ export class LinkedInAuth {
           waitUntil: "domcontentloaded",
           timeout: 15_000,
         });
+      } else if (!currentUrl.includes("/feed") && !currentUrl.includes("/in/") && !currentUrl.includes("/jobs")) {
+        // Already on LinkedIn but not a logged-in page — go to feed
+        await this.page.goto(LinkedInUrls.FEED, {
+          waitUntil: "domcontentloaded",
+          timeout: 15_000,
+        });
       }
 
-      // Check for global nav — the definitive logged-in indicator
+      await this.page.waitForTimeout(2000);
+      const finalUrl = this.page.url();
+
+      // If we landed on feed or any authenticated page → logged in
+      if (
+        finalUrl.includes("/feed") ||
+        finalUrl.includes("/in/") ||
+        finalUrl.includes("/mynetwork") ||
+        finalUrl.includes("/jobs") ||
+        finalUrl.includes("/messaging") ||
+        finalUrl.includes("/notifications")
+      ) {
+        return true;
+      }
+
+      // If redirected back to login → not logged in
+      if (finalUrl.includes("/login") || finalUrl.includes("/checkpoint")) {
+        return false;
+      }
+
+      // Fallback: check for any LinkedIn nav element
       const navVisible = await this.page
-        .locator(LinkedInSelectors.FEED.GLOBAL_NAV)
-        .isVisible({ timeout: 5_000 })
+        .locator([
+          LinkedInSelectors.FEED.GLOBAL_NAV,
+          "nav[aria-label]",
+          ".scaffold-layout__main",
+          "main.scaffold-layout__main",
+          "[data-test-id]",
+        ].join(", "))
+        .first()
+        .isVisible({ timeout: 3_000 })
         .catch(() => false);
 
       return navVisible;
@@ -116,10 +161,19 @@ export class LinkedInAuth {
         timeout: 15_000,
       });
 
-      const isLoggedIn = await this.isLoggedIn();
+      await this.page.waitForTimeout(2000);
+      const finalUrl = this.page.url();
+
+      // URL-based check — most reliable across LinkedIn UI versions
+      const isLoggedIn =
+        finalUrl.includes("/feed") ||
+        finalUrl.includes("/in/") ||
+        finalUrl.includes("/mynetwork") ||
+        finalUrl.includes("/jobs") ||
+        finalUrl.includes("/messaging");
+
       if (!isLoggedIn) return { isLoggedIn: false };
 
-      // Try to extract display name from the nav
       const username = await this.extractUsername();
       return { isLoggedIn: true, ...(username !== undefined && { username }) };
     } catch {
@@ -166,59 +220,174 @@ export class LinkedInAuth {
 
     await this.page.goto(LinkedInUrls.LOGIN, {
       waitUntil: "domcontentloaded",
-      timeout: 20_000,
+      timeout: 30_000,
     });
 
-    // Wait for email input to be ready
+    // Wait for page to settle
+    await randomDelay(1500, 2500);
+
+    // ── Dismiss Google One-Tap popup ──────────────────────────────────────────
+    // LinkedIn shows a "Continue as X" Google popup that blocks the form.
+    // We must close it before interacting with email/password fields.
+    await this.dismissGoogleOneTap();
+
+    // Wait for email field to be in DOM
+    const emailSelector = `input[autocomplete="username"], #username, input[name="session_key"], input[type="email"]`;
     await this.page
-      .locator(LinkedInSelectors.LOGIN.EMAIL_INPUT)
-      .waitFor({ state: "visible", timeout: 10_000 });
+      .locator(emailSelector)
+      .first()
+      .waitFor({ state: "attached", timeout: 10_000 });
 
     await shortDelay();
+  }
+
+  /**
+   * Dismiss the Google One-Tap / "Continue as" popup that LinkedIn shows.
+   * This popup overlays the login form and blocks input interaction.
+   *
+   * Multiple dismissal strategies tried in order:
+   * 1. Click the "✕" close button on the Google popup
+   * 2. Press Escape key
+   * 3. Click outside the popup
+   */
+  private async dismissGoogleOneTap(): Promise<void> {
+    const closeSelectors = [
+      // Google One-Tap close button
+      '#credential_picker_container iframe',
+      'div[id="credential_picker_container"] [aria-label="Close"]',
+      '[aria-label="Close"]',
+      // LinkedIn's own "Sign in with Google" dismiss
+      'button[aria-label*="Dismiss"]',
+      'button[aria-label*="dismiss"]',
+    ];
+
+    // First try: press Escape — fastest and most reliable
+    await this.page.keyboard.press("Escape");
+    await randomDelay(500, 800);
+
+    // Check if popup is still showing inside an iframe
+    const frames = this.page.frames();
+    for (const frame of frames) {
+      if (frame.url().includes("accounts.google.com")) {
+        try {
+          const closeBtn = frame.locator('[aria-label="Close"], button:has-text("×"), button:has-text("✕")').first();
+          if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+            await closeBtn.click();
+            await shortDelay();
+            logger.debug("Closed Google iframe popup");
+            return;
+          }
+        } catch {
+          // continue
+        }
+      }
+    }
+
+    // Check if popup is in main page DOM
+    for (const sel of closeSelectors) {
+      const el = this.page.locator(sel).first();
+      if (await el.isVisible({ timeout: 500 }).catch(() => false)) {
+        await el.click().catch(() => null);
+        await shortDelay();
+        logger.debug("Dismissed Google One-Tap via selector", { sel });
+        return;
+      }
+    }
+
+    // Last resort: click top-left corner (outside any popup)
+    await this.page.mouse.click(10, 10);
+    await randomDelay(500, 800);
+    logger.debug("Dismissed popup via background click");
   }
 
   private async fillEmail(email: string): Promise<void> {
     logger.debug("Filling email field");
 
-    const emailField = this.page.locator(LinkedInSelectors.LOGIN.EMAIL_INPUT);
-    await emailField.click();
-    await shortDelay();
+    const emailSelector = `input[autocomplete="username"], #username, input[name="session_key"], input[type="email"]`;
 
-    // Type character by character — randomised delay per keystroke
-    await humanType(async (char: string) => {
-      await this.page.keyboard.type(char);
-    }, email);
+    // page.evaluate sets value via JS — works regardless of CSS visibility
+    const filled = await this.page.evaluate(
+      ([sel, val]: [string, string]) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const g = globalThis as any;
+        const input = g.document.querySelector(sel);
+        if (!input) return false;
+        // React-compatible: use native setter so React detects the change
+        const nativeSetter = Object.getOwnPropertyDescriptor(
+          Object.getPrototypeOf(input), "value"
+        )?.set;
+        if (nativeSetter) nativeSetter.call(input, val);
+        else input.value = val;
+        input.dispatchEvent(new g.Event("input",  { bubbles: true }));
+        input.dispatchEvent(new g.Event("change", { bubbles: true }));
+        input.dispatchEvent(new g.KeyboardEvent("keyup", { bubbles: true }));
+        return input.value === val;
+      },
+      [emailSelector, email] as [string, string]
+    );
+
+    logger.debug("Email filled via JS evaluate", { filled });
+    await shortDelay();
   }
 
   private async fillPassword(password: string): Promise<void> {
     logger.debug("Filling password field");
 
-    const passwordField = this.page.locator(
-      LinkedInSelectors.LOGIN.PASSWORD_INPUT
-    );
-    await passwordField.click();
-    await shortDelay();
+    const pwSelector = `input[autocomplete="current-password"], #password, input[name="session_password"], input[type="password"]`;
 
-    await humanType(async (char: string) => {
-      await this.page.keyboard.type(char);
-    }, password);
+    const filled = await this.page.evaluate(
+      ([sel, val]: [string, string]) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const g = globalThis as any;
+        const input = g.document.querySelector(sel);
+        if (!input) return false;
+        const nativeSetter = Object.getOwnPropertyDescriptor(
+          Object.getPrototypeOf(input), "value"
+        )?.set;
+        if (nativeSetter) nativeSetter.call(input, val);
+        else input.value = val;
+        input.dispatchEvent(new g.Event("input",  { bubbles: true }));
+        input.dispatchEvent(new g.Event("change", { bubbles: true }));
+        input.dispatchEvent(new g.KeyboardEvent("keyup", { bubbles: true }));
+        return input.value === val;
+      },
+      [pwSelector, password] as [string, string]
+    );
+
+    logger.debug("Password filled via JS evaluate", { filled });
+    await shortDelay();
   }
 
   private async clickSignIn(): Promise<void> {
     logger.debug("Clicking sign in button");
 
-    // Try the primary selector first, fall back to generic submit
-    const primaryBtn = this.page.locator(LinkedInSelectors.LOGIN.SUBMIT_BUTTON);
-    const fallbackBtn = this.page.locator(
-      LinkedInSelectors.LOGIN.SUBMIT_BUTTON_FALLBACK
-    );
+    // LinkedIn uses type="button" not type="submit" on the Sign in button
+    // Find by text content "Sign in" inside the form
+    const clicked = await this.page.evaluate(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const g = globalThis as any;
+      const doc = g.document;
 
-    const primaryVisible = await primaryBtn.isVisible().catch(() => false);
+      // Strategy: find button containing "Sign in" text
+      const allButtons = Array.from(doc.querySelectorAll("button")) as unknown as Array<{innerText: string; click: () => void}>;
+      const signInBtn = allButtons.find((btn) => {
+        const text = btn.innerText?.trim().toLowerCase();
+        return text === "sign in";
+      });
 
-    if (primaryVisible) {
-      await primaryBtn.click();
-    } else {
-      await fallbackBtn.first().click();
+      if (signInBtn) {
+        signInBtn.click();
+        return true;
+      }
+      return false;
+    });
+
+    logger.debug("Sign in button clicked via JS", { clicked });
+
+    if (!clicked) {
+      // Fallback: Enter key
+      await this.page.keyboard.press("Enter");
+      logger.debug("Used Enter key fallback");
     }
   }
 
